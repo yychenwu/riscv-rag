@@ -19,18 +19,21 @@ PDF → 切段 → HuggingFace Embedding → ChromaDB
 
 ### 1. 建立虛擬環境
 
+**venv（virtual environment）** 是 Python 內建的隔離機制，讓這個專案擁有自己獨立的套件，不受系統其他 Python 版本干擾。
+
 ```bash
 cd rag-project
 python3 -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 ```
 
+啟動後 terminal prompt 會出現 `(venv)` 前綴，表示已進入專案環境。
+之後每次開新 terminal 視窗，都需要重新執行 `source venv/bin/activate`。
+
 ### 2. 安裝套件
 
 ```bash
-pip install anthropic python-dotenv langchain langchain-anthropic \
-            langchain-community langchain-chroma chromadb pypdf \
-            sentence-transformers
+pip install -r requirements.txt
 ```
 
 ### 3. 設定 API Key
@@ -97,6 +100,5 @@ python3 src/ingest.py
 
 ## 注意事項
 
-- `db/` 和 `.env` 已加入 `.gitignore`，不會上傳 GitHub
-- 建議使用 venv 隔離套件環境，避免系統 Python 版本衝突
-- 每次開新 terminal 都要 `source venv/bin/activate`
+- `db/`、`.env`、`venv/` 已加入 `.gitignore`，不會上傳 GitHub
+- 每次開新 terminal 都要先執行 `source venv/bin/activate`，才能使用正確的套件環境
