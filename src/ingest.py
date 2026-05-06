@@ -8,14 +8,20 @@ import os
 import warnings
 warnings.filterwarnings("ignore")
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_voyageai import VoyageAIEmbeddings
+from langchain_chroma import Chroma
 
 # 資料目錄（放 PDF）和向量資料庫目錄
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 DB_DIR = os.path.join(os.path.dirname(__file__), "..", "db")
+
+# voyage-3.5 適合技術文件（通用高品質）；若主要是程式碼可改用 voyage-code-3
+VOYAGE_MODEL = "voyage-3.5"
 
 
 def ingest_pdfs():
@@ -46,11 +52,10 @@ def ingest_pdfs():
     chunks = splitter.split_documents(all_docs)
     print(f"\nTotal chunks: {len(chunks)}")
 
-    # 載入本地 embedding 模型（all-MiniLM-L6-v2，約 90MB，第一次自動下載）
-    print("Loading embedding model (first run downloads ~90MB)...")
-    embeddings = HuggingFaceEmbeddings(
-        model_name="all-MiniLM-L6-v2",
-        model_kwargs={"device": "cpu"},
+    # 使用 Voyage AI embedding（Anthropic 官方推薦，技術文件效果佳）
+    print(f"Using Voyage AI embedding model: {VOYAGE_MODEL}")
+    embeddings = VoyageAIEmbeddings(
+        model=VOYAGE_MODEL,
     )
 
     # 把所有 chunk 向量化並存進 ChromaDB，資料庫持久化到 db/ 資料夾

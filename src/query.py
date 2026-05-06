@@ -11,14 +11,17 @@ import warnings
 warnings.filterwarnings("ignore")
 
 from dotenv import load_dotenv
-load_dotenv()  # 從 .env 載入 ANTHROPIC_API_KEY
+load_dotenv()  # 從 .env 載入 ANTHROPIC_API_KEY 和 VOYAGE_API_KEY
 
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_voyageai import VoyageAIEmbeddings
+from langchain_chroma import Chroma
 import anthropic
 
 # 向量資料庫路徑（由 ingest.py 產生）
 DB_DIR = os.path.join(os.path.dirname(__file__), "..", "db")
+
+# ingest 和 query 必須使用同一個 embedding 模型，才能比較向量
+VOYAGE_MODEL = "voyage-3.5"
 
 
 def build_prompt(question: str, context_chunks: list) -> str:
@@ -42,7 +45,7 @@ Answer:"""
 def query(question: str, top_k: int = 5) -> str:
     """
     主查詢函式：
-    1. 把問題向量化
+    1. 把問題向量化（input_type="query"，與建庫時的 "document" 對稱）
     2. 在 ChromaDB 找最相近的 top_k 個 chunk
     3. 組 prompt 送給 Claude Haiku
     4. 回傳回答文字
@@ -50,10 +53,8 @@ def query(question: str, top_k: int = 5) -> str:
     if not os.path.exists(DB_DIR):
         return "Error: Vector store not found. Run `python3 src/ingest.py` first."
 
-    # 載入同一個 embedding 模型（ingest 和 query 必須一致，才能比較向量）
-    embeddings = HuggingFaceEmbeddings(
-        model_name="all-MiniLM-L6-v2",
-        model_kwargs={"device": "cpu"},
+    embeddings = VoyageAIEmbeddings(
+        model=VOYAGE_MODEL,
     )
     db = Chroma(persist_directory=DB_DIR, embedding_function=embeddings)
 
