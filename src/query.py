@@ -33,6 +33,7 @@ def build_prompt(question: str, context_chunks: list) -> str:
     ])
     return f"""You are a technical assistant specializing in RISC-V architecture and semiconductor IP.
 Answer the question using ONLY the context below. If the answer is not in the context, say so.
+Reply in the same language as the question (English or Traditional Chinese).
 
 Context:
 {context}
