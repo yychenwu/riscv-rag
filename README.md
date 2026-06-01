@@ -1,104 +1,102 @@
-# RISC-V RAG System
+# RISC-V RAG Knowledge Base
 
-用 Claude + ChromaDB 建的 RAG（Retrieval-Augmented Generation）系統，可以對 RISC-V spec PDF 進行語意搜尋與問答。
+以 Claude + Voyage AI + ChromaDB 建構的 RISC-V 規格知識庫，涵蓋 27 份官方 spec PDF（2073 頁、3224 chunks），支援語意搜尋與問答。
 
 ## 架構
 
 ```
-PDF → 切段 → HuggingFace Embedding → ChromaDB
-                                           ↓
-用戶提問 → 向量搜尋 → 取相關 chunk → Claude Haiku → 回答
+PDF (27份) → PyPDF 解析 → Voyage AI Embedding → ChromaDB
+                                                      ↓
+用戶提問 → 向量搜尋 → 取相關 chunk → Claude → 回答
 ```
+
+## 知識庫涵蓋範圍
+
+| 類別 | 規格 |
+|------|------|
+| ISA Manual | RISC-V Unified ISA Manual (Vol 1 + Vol 2 + Privileged, 2026-06-01) |
+| Interrupt | AIA 1.0、PLIC 1.0、Double Trap 1.0、Ssqosid 1.0 |
+| Memory Protection | SPMP 1.0-rc4、SPMP for Hypervisor 0.2、IOPMP 0.8.2、IOMMU |
+| Extensions | Vector 1.0、Bitmanip 1.0、Zicond 1.0、Zc* 1.0.4、Scalar Crypto 1.0.1、Sstc 0.5.4、Zaamo/Zalrsc 1.0、Indirect CSR rc7/rc3 |
+| Platform | SBI 3.0、Profiles (RVA23/RVB23)、Platform Security Model 0.1、WorldGuard 0.4 |
+| Debug & Trace | Debug 1.0-STABLE、N-Trace 1.0、Trace Control 1.0、Trace Connectors 1.0 |
 
 ## 環境需求
 
-- Python 3.9+
+- Python 3.9+（使用 `/usr/bin/python3`，不需 venv）
 - Anthropic API Key
+- Voyage AI API Key
 
 ## 快速開始
 
-### 1. 建立虛擬環境
-
-**venv（virtual environment）** 是 Python 內建的隔離機制，讓這個專案擁有自己獨立的套件，不受系統其他 Python 版本干擾。
+### 1. 安裝套件
 
 ```bash
-cd rag-project
-python3 -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+pip install -r requirements.txt --break-system-packages
 ```
 
-啟動後 terminal prompt 會出現 `(venv)` 前綴，表示已進入專案環境。
-之後每次開新 terminal 視窗，都需要重新執行 `source venv/bin/activate`。
+### 2. 設定 API Key
 
-### 2. 安裝套件
+在專案根目錄建立 `.env`：
+
+```
+ANTHROPIC_API_KEY=sk-ant-...
+VOYAGE_API_KEY=pa-...
+```
+
+### 3. 下載 PDF（已有 data/ 可跳過）
 
 ```bash
-pip install -r requirements.txt
+bash download_specs.sh
 ```
 
-### 3. 設定 API Key
-
-複製 `.env.example` 並填入你的 Anthropic API Key：
+### 4. 建立向量資料庫
 
 ```bash
-cp .env.example .env
-# 編輯 .env，填入 ANTHROPIC_API_KEY=sk-ant-...
+# 如果 db/ 已存在要重建，先刪除：
+# python3 -c "import shutil; shutil.rmtree('db/')"
+
+/usr/bin/python3 src/ingest.py
 ```
 
-### 4. 放入 PDF
+完成後會在 `db/` 產生向量資料庫（27 份 PDF → 3224 chunks）。
 
-把要查詢的 PDF 放進 `data/` 資料夾：
-
-```
-data/
-  riscv-spec.pdf
-  riscv-privileged.pdf   # 可選
-  amba-axi4.pdf          # 可選
-```
-
-### 5. 建立向量資料庫（只需跑一次）
-
-```bash
-python3 src/ingest.py
-```
-
-第一次執行會自動下載 embedding model（約 90MB）。完成後會在 `db/` 產生向量資料庫。
-
-### 6. 開始問問題
+### 5. 開始查詢
 
 互動模式：
 ```bash
-python3 src/query.py
+/usr/bin/python3 src/query.py
 ```
 
-單次問答：
+單次查詢：
 ```bash
-python3 src/query.py "What is the RISC-V interrupt handling mechanism?"
+/usr/bin/python3 src/query.py "What is the RISC-V AIA interrupt architecture?"
 ```
 
 ## 專案結構
 
 ```
 rag-project/
-├── data/              # 放 PDF 的地方
-├── db/                # ChromaDB 向量資料庫（自動產生，不進 git）
+├── data/                  # 27 份 RISC-V spec PDF
+├── db/                    # ChromaDB 向量資料庫（自動產生，不進 git）
 ├── src/
-│   ├── ingest.py      # PDF → 向量資料庫
-│   └── query.py       # 查詢介面
-├── .env               # API Key（不進 git）
-├── .env.example       # API Key 範本
-└── requirements.txt   # 套件清單
+│   ├── ingest.py          # PDF → 向量資料庫（chunk_size=2000）
+│   └── query.py           # 查詢介面
+├── download_specs.sh      # 自動下載 27 份 PDF 的腳本
+├── .env                   # API Keys（不進 git）
+└── requirements.txt
 ```
 
-## 新增 PDF 素材
+## 新增 PDF
 
-把新 PDF 放進 `data/` 後，重跑 ingest：
+把新 PDF 放進 `data/`，然後重建資料庫：
 
 ```bash
-python3 src/ingest.py
+python3 -c "import shutil; shutil.rmtree('db/')"
+/usr/bin/python3 src/ingest.py
 ```
 
 ## 注意事項
 
-- `db/`、`.env`、`venv/` 已加入 `.gitignore`，不會上傳 GitHub
-- 每次開新 terminal 都要先執行 `source venv/bin/activate`，才能使用正確的套件環境
+- `db/`、`.env` 已加入 `.gitignore`，不會上傳 GitHub
+- ANTHROPIC_API_KEY **不可**寫入 `~/.zshrc`，會干擾 Claude Code CLI 認證；請用專案 `.env`

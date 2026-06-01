@@ -45,7 +45,7 @@ def ingest_pdfs():
 
     # 切段：每段最多 1000 字元，相鄰段重疊 200 字元（保留上下文語義）
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
+        chunk_size=2000,
         chunk_overlap=200,
         separators=["\n\n", "\n", " ", ""],  # 優先從段落、換行處切
     )
